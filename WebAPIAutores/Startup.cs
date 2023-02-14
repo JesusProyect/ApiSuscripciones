@@ -102,9 +102,11 @@ namespace WebAPIAutores
             {
                 opciones.AddDefaultPolicy(builder =>
                 {
-                    builder.WithOrigins("https://www.apirequest.io").AllowAnyMethod().AllowAnyHeader();
+                    builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
                 });
             });
+
+            services.AddScoped<ServicioLlave>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -126,6 +128,8 @@ namespace WebAPIAutores
             app.UseRouting();
 
             app.UseCors();
+
+            app.UseLimitarPeticiones();
 
             app.UseAuthorization();
 

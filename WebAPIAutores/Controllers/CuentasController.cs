@@ -14,6 +14,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using WebAPIAutores.DTOs;
+using WebAPIAutores.Entidades;
 using WebAPIAutores.Servicios;
 
 namespace WebAPIAutores.Controllers
@@ -22,81 +23,35 @@ namespace WebAPIAutores.Controllers
     [Route("api/cuentas")]
     public class CuentasController: ControllerBase
     {
-        private readonly UserManager<IdentityUser> userManager;
-        private readonly IConfiguration configuration;
-        private readonly SignInManager<IdentityUser> signInManager;
-        private readonly HashService hashService;
-        private readonly IDataProtector dataProtector;
+        private readonly UserManager<IdentityUser> _userManager;
+        private readonly IConfiguration _configuration;
+        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly ServicioLlave _servicioLlave;
 
         public CuentasController(UserManager<IdentityUser> userManager,
             IConfiguration configuration,
             SignInManager<IdentityUser> signInManager,
-            IDataProtectionProvider dataProtectionProvider,
-            HashService hashService)
+            ServicioLlave servicioLlave)
         {
-            this.userManager = userManager;
-            this.configuration = configuration;
-            this.signInManager = signInManager;
-            this.hashService = hashService;
-            dataProtector = dataProtectionProvider.CreateProtector("valor_unico_y_quizas_secreto");
+            this._userManager = userManager;
+            this._configuration = configuration;
+            this._signInManager = signInManager;
+            _servicioLlave = servicioLlave;
         }
 
-        [HttpGet("hash/{textoPlano}")]
-        public ActionResult RealizarHash(string textoPlano)
-        {
-            var resultado1 = hashService.Hash(textoPlano);
-            var resultado2 = hashService.Hash(textoPlano);
-            return Ok(new
-            {
-                textoPlano = textoPlano,
-                Hash1 = resultado1,
-                Hash2 = resultado2
-            });
-        }
-
-        [HttpGet("encriptar")]
-        public ActionResult Encriptar()
-        {
-            var textoPlano = "Felipe Gavilán";
-            var textoCifrado = dataProtector.Protect(textoPlano);
-            var textoDesencriptado = dataProtector.Unprotect(textoCifrado);
-
-            return Ok(new
-            {
-                textoPlano = textoPlano,
-                textoCifrado = textoCifrado,
-                textoDesencriptado = textoDesencriptado
-            });
-        }
-
-        [HttpGet("encriptarPorTiempo")]
-        public ActionResult EncriptarPorTiempo()
-        {
-            var protectorLimitadoPorTiempo = dataProtector.ToTimeLimitedDataProtector();
-
-            var textoPlano = "Felipe Gavilán";
-            var textoCifrado = protectorLimitadoPorTiempo.Protect(textoPlano, lifetime: TimeSpan.FromSeconds(5));
-            Thread.Sleep(6000);
-            var textoDesencriptado = protectorLimitadoPorTiempo.Unprotect(textoCifrado);
-
-            return Ok(new
-            {
-                textoPlano = textoPlano,
-                textoCifrado = textoCifrado,
-                textoDesencriptado = textoDesencriptado
-            });
-        }
+     
 
         [HttpPost("registrar")] // api/cuentas/registrar
         public async Task<ActionResult<RespuestaAutenticacion>> Registrar(CredencialesUsuario credencialesUsuario)
         {
             var usuario = new IdentityUser { UserName = credencialesUsuario.Email, 
                 Email = credencialesUsuario.Email };
-            var resultado = await userManager.CreateAsync(usuario, credencialesUsuario.Password);
+            var resultado = await _userManager.CreateAsync(usuario, credencialesUsuario.Password);
 
             if (resultado.Succeeded)
             {
-                return await ConstruirToken(credencialesUsuario);
+                await _servicioLlave.CrearLlave(usuario.Id, TipoLlave.Gratuita);
+                return await ConstruirToken(credencialesUsuario, usuario.Id);
             }
             else
             {
@@ -107,12 +62,13 @@ namespace WebAPIAutores.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<RespuestaAutenticacion>> Login(CredencialesUsuario credencialesUsuario)
         {
-            var resultado = await signInManager.PasswordSignInAsync(credencialesUsuario.Email,
+            var resultado = await _signInManager.PasswordSignInAsync(credencialesUsuario.Email,
                 credencialesUsuario.Password, isPersistent: false, lockoutOnFailure: false);
 
             if (resultado.Succeeded)
             {
-                return await ConstruirToken(credencialesUsuario);
+                var usuario = await _userManager.FindByEmailAsync(credencialesUsuario.Email);
+                return await ConstruirToken(credencialesUsuario, usuario.Id);
             }
             else
             {
@@ -126,28 +82,32 @@ namespace WebAPIAutores.Controllers
         {
             var emailClaim = HttpContext.User.Claims.Where(claim => claim.Type == "email").FirstOrDefault();
             var email = emailClaim.Value;
+
+            var idClaim = HttpContext.User.Claims.Where(claim => claim.Type == "id").FirstOrDefault();
+            var usuarioId = idClaim.Value;
             var credencialesUsuario = new CredencialesUsuario()
             {
                 Email = email
             };
 
-            return await ConstruirToken(credencialesUsuario);
+            return await ConstruirToken(credencialesUsuario, usuarioId);
         }
 
-        private async Task<RespuestaAutenticacion> ConstruirToken(CredencialesUsuario credencialesUsuario)
+        private async Task<RespuestaAutenticacion> ConstruirToken(CredencialesUsuario credencialesUsuario, string usuarioId)
         {
             var claims = new List<Claim>()
             {
                 new Claim("email", credencialesUsuario.Email),
-                new Claim("lo que yo quiera", "cualquier otro valor")
+                new Claim("lo que yo quiera", "cualquier otro valor"),
+                new Claim("id", usuarioId)
             };
 
-            var usuario = await userManager.FindByEmailAsync(credencialesUsuario.Email);
-            var claimsDB = await userManager.GetClaimsAsync(usuario);
+            var usuario = await _userManager.FindByEmailAsync(credencialesUsuario.Email);
+            var claimsDB = await _userManager.GetClaimsAsync(usuario);
 
             claims.AddRange(claimsDB);
 
-            var llave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["llavejwt"]));
+            var llave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["llavejwt"]));
             var creds = new SigningCredentials(llave, SecurityAlgorithms.HmacSha256);
 
             var expiracion = DateTime.UtcNow.AddYears(1);
@@ -165,16 +125,16 @@ namespace WebAPIAutores.Controllers
         [HttpPost("HacerAdmin")]
         public async Task<ActionResult> HacerAdmin(EditarAdminDTO editarAdminDTO)
         {
-            var usuario = await userManager.FindByEmailAsync(editarAdminDTO.Email);
-            await userManager.AddClaimAsync(usuario, new Claim("esAdmin", "1"));
+            var usuario = await _userManager.FindByEmailAsync(editarAdminDTO.Email);
+            await _userManager.AddClaimAsync(usuario, new Claim("esAdmin", "1"));
             return NoContent();
         }
 
         [HttpPost("RemoverAdmin")]
         public async Task<ActionResult> RemoverAdmin(EditarAdminDTO editarAdminDTO)
         {
-            var usuario = await userManager.FindByEmailAsync(editarAdminDTO.Email);
-            await userManager.RemoveClaimAsync(usuario, new Claim("esAdmin", "1"));
+            var usuario = await _userManager.FindByEmailAsync(editarAdminDTO.Email);
+            await _userManager.RemoveClaimAsync(usuario, new Claim("esAdmin", "1"));
             return NoContent();
         }
     }

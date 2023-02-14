@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebAPIAutores;
 
@@ -11,9 +12,10 @@ using WebAPIAutores;
 namespace WebAPIAutores.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230213194244_Restricciones_Dominio_IP")]
+    partial class Restricciones_Dominio_IP
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -362,12 +364,15 @@ namespace WebAPIAutores.Migrations
                     b.Property<string>("Dominio")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("LlaveAPIId")
+                        .HasColumnType("int");
+
                     b.Property<int>("LlaveId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LlaveId");
+                    b.HasIndex("LlaveAPIId");
 
                     b.ToTable("RestriccionesDominio");
                 });
@@ -383,12 +388,15 @@ namespace WebAPIAutores.Migrations
                     b.Property<string>("IP")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("LlaveAPIId")
+                        .HasColumnType("int");
+
                     b.Property<int>("LlaveId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LlaveId");
+                    b.HasIndex("LlaveAPIId");
 
                     b.ToTable("RestriccionesIP");
                 });
@@ -502,24 +510,20 @@ namespace WebAPIAutores.Migrations
 
             modelBuilder.Entity("WebAPIAutores.Entidades.RestriccionDominio", b =>
                 {
-                    b.HasOne("WebAPIAutores.Entidades.LlaveAPI", "Llave")
-                        .WithMany("RestriccionesDominio")
-                        .HasForeignKey("LlaveId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.HasOne("WebAPIAutores.Entidades.LlaveAPI", "LlaveAPI")
+                        .WithMany()
+                        .HasForeignKey("LlaveAPIId");
 
-                    b.Navigation("Llave");
+                    b.Navigation("LlaveAPI");
                 });
 
             modelBuilder.Entity("WebAPIAutores.Entidades.RestriccionIP", b =>
                 {
-                    b.HasOne("WebAPIAutores.Entidades.LlaveAPI", "Llave")
-                        .WithMany("RestriccionesIP")
-                        .HasForeignKey("LlaveId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.HasOne("WebAPIAutores.Entidades.LlaveAPI", "LlaveAPI")
+                        .WithMany()
+                        .HasForeignKey("LlaveAPIId");
 
-                    b.Navigation("Llave");
+                    b.Navigation("LlaveAPI");
                 });
 
             modelBuilder.Entity("WebAPIAutores.Entidades.Autor", b =>
@@ -532,13 +536,6 @@ namespace WebAPIAutores.Migrations
                     b.Navigation("AutoresLibros");
 
                     b.Navigation("Comentarios");
-                });
-
-            modelBuilder.Entity("WebAPIAutores.Entidades.LlaveAPI", b =>
-                {
-                    b.Navigation("RestriccionesDominio");
-
-                    b.Navigation("RestriccionesIP");
                 });
 #pragma warning restore 612, 618
         }

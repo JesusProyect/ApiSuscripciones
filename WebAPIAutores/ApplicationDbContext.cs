@@ -25,6 +25,10 @@ namespace WebAPIAutores
 
         public DbSet<Autor> Autores { get; set; }
         public DbSet<Libro> Libros { get; set; }
+        public DbSet<Peticion> Peticiones { get; set; }
+        public DbSet<RestriccionDominio> RestriccionesDominio{ get; set; }
+        public DbSet<RestriccionIP> RestriccionesIP { get; set; }
+        public DbSet<LlaveAPI> LlavesApi { get; set; }
         public DbSet<Comentario> Comentarios { get; set; }
         public DbSet<AutorLibro> AutoresLibros { get; set; }
     }
