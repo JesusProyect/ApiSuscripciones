@@ -3,70 +3,72 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Threading.Tasks;
 using WebAPIAutores.DTOs;
 using WebAPIAutores.Entidades;
-using WebAPIAutores.Migrations;
 
 namespace WebAPIAutores.Controllers
 {
+    [Route("api/[controller]")]
     [ApiController]
-    [Route("/api/[controller]")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-    public class RestriccionDominioController : CustomBaseController
+    public class RestriccionesIPController : CustomBaseController
     {
         private readonly ApplicationDbContext _context;
 
-        public RestriccionDominioController(ApplicationDbContext context)
+        public RestriccionesIPController(ApplicationDbContext context)
         {
             _context = context;
         }
 
         [HttpPost]
-        public async Task<ActionResult> Post(CrearRestriccionesDominioDto crearRestriccionesDominioDto)
+        public async Task<ActionResult> Post(CrearRestriccionIpDto restriccionIpDto)
         {
-            var llaveDb = await _context.LlavesApi.FirstOrDefaultAsync(x => x.Id == crearRestriccionesDominioDto.LlaveId);
-            if (llaveDb == null) return NotFound();
+            var llaveDb = await _context.LlavesApi.FirstOrDefaultAsync(x => x.Id == restriccionIpDto.LlaveId);
+            if (llaveDb is null) return NotFound();
 
             var usuarioId = ObtenerUsuarioId();
-            if (llaveDb.UsuarioId != usuarioId) return StatusCode(StatusCodes.Status403Forbidden); // ES EL FORBID CREO PORQUE REDIRECCIONA SEGUN HE ENTENDIDO;
+            if (llaveDb.UsuarioId != usuarioId) return StatusCode(StatusCodes.Status403Forbidden);
 
-            var restriccionDominio = new RestriccionDominio()
+            var restriccionIp = new RestriccionIP()
             {
-                LlaveId = crearRestriccionesDominioDto.LlaveId,
-                Dominio = crearRestriccionesDominioDto.Dominio
+                LlaveId = llaveDb.Id,
+                IP = restriccionIpDto.IP
             };
 
-            _context.Add(restriccionDominio);
+            _context.Add(restriccionIp);
             await _context.SaveChangesAsync();
 
             return NoContent();
-
         }
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult> Put(int id, ActualizarRestriccionDominioDto actualizarRestriccionDominioDto)
+        public async Task<ActionResult> Put(int id, ActualizarRestriccionIpDto actualizarrestriccion)
         {
-            var restriccionDb = await _context.RestriccionesDominio.Include(x => x.Llave).FirstOrDefaultAsync(x => x.Id == id);
+            var restriccionDb = await _context.RestriccionesIP
+                .Include(x => x.Llave)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (restriccionDb is null) return NotFound();
 
             var usuarioId = ObtenerUsuarioId();
             if (restriccionDb.Llave.UsuarioId != usuarioId) return StatusCode(StatusCodes.Status403Forbidden);
 
-            restriccionDb.Dominio = actualizarRestriccionDominioDto.Dominio; 
+            restriccionDb.IP = actualizarrestriccion.IP;
             await _context.SaveChangesAsync();
             return NoContent();
-
         }
 
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id)
         {
-            var restriccionDb = await _context.RestriccionesDominio.Include(x => x.Llave).FirstOrDefaultAsync(x => x.Id == id);
+            var restriccionDb = await _context.RestriccionesIP.Include(x => x.Llave).FirstOrDefaultAsync(x => x.Id == id);
 
             if (restriccionDb is null) return NotFound();
 
             var usuarioId = ObtenerUsuarioId();
+
             if (usuarioId != restriccionDb.Llave.UsuarioId) return StatusCode(StatusCodes.Status403Forbidden);
 
             _context.Remove(restriccionDb);
@@ -74,8 +76,5 @@ namespace WebAPIAutores.Controllers
 
             return NoContent();
         }
-
-
-
     }
 }

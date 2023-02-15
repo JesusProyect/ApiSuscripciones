@@ -23,14 +23,14 @@ namespace WebAPIAutores.Controllers
     [Route("api/cuentas")]
     public class CuentasController: ControllerBase
     {
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<Usuario> _userManager;
         private readonly IConfiguration _configuration;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly SignInManager<Usuario> _signInManager;
         private readonly ServicioLlave _servicioLlave;
 
-        public CuentasController(UserManager<IdentityUser> userManager,
+        public CuentasController(UserManager<Usuario> userManager,
             IConfiguration configuration,
-            SignInManager<IdentityUser> signInManager,
+            SignInManager<Usuario> signInManager,
             ServicioLlave servicioLlave)
         {
             this._userManager = userManager;
@@ -44,7 +44,7 @@ namespace WebAPIAutores.Controllers
         [HttpPost("registrar")] // api/cuentas/registrar
         public async Task<ActionResult<RespuestaAutenticacion>> Registrar(CredencialesUsuario credencialesUsuario)
         {
-            var usuario = new IdentityUser { UserName = credencialesUsuario.Email, 
+            var usuario = new Usuario { UserName = credencialesUsuario.Email, 
                 Email = credencialesUsuario.Email };
             var resultado = await _userManager.CreateAsync(usuario, credencialesUsuario.Password);
 

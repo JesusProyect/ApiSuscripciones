@@ -13,6 +13,6 @@ namespace WebAPIAutores.Entidades
         public int LibroId { get; set; }
         public Libro Libro { get; set; }
         public string UsuarioId { get; set; }
-        public IdentityUser Usuario { get; set; }
+        public Usuario Usuario { get; set; }
     }
 }

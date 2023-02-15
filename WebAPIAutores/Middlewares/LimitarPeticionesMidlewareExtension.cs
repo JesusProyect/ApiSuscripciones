@@ -52,7 +52,7 @@ namespace WebAPIAutores.Middlewares
             if(llaveStringValues.Count == 0)
             {
                 httpContext.Response.StatusCode = 400;
-                await httpContext.Response.WriteAsync("Debe provee la llave en la cabecera X-Api-Key");
+                await httpContext.Response.WriteAsync("Debe proveer la llave en la cabecera X-Api-Key");
                 return;
             }
 
@@ -70,6 +70,7 @@ namespace WebAPIAutores.Middlewares
             var llaveDb = await context.LlavesApi
                 .Include(x => x.RestriccionesDominio)
                 .Include(x => x.RestriccionesIP)
+                .Include(x => x.Usuario)
                 .AsSingleQuery()
                 .FirstOrDefaultAsync(x => x.Llave == llave);
 
@@ -104,7 +105,14 @@ namespace WebAPIAutores.Middlewares
                     return;
                 }
                 
+            } //si es mala paga no lo dejamos hacer nada, si es gratuita lo dejamos asi sea mala paga
+            else if(llaveDb.Usuario.MalaPaga)
+            {
+                httpContext.Response.StatusCode = 400;
+                await httpContext.Response.WriteAsync("El usuario es un mala paga");
+                return;
             }
+            
 
             //restricciones
             var superaRestricciones = PeticionSuperaAlgunaDeLasRestricciones(llaveDb, httpContext);

@@ -4,6 +4,6 @@ namespace WebAPIAutores.DTOs
 {
     public class CrearLlaveDto
     {
-        public TipoLlave TipoLlave { get; set; }
+        public TipoLlave TipoLlave { get; set; } = TipoLlave.Gratuita;
     }
 }
